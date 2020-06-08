@@ -176,29 +176,6 @@ const validarDataReserva = () => {};
 module.exports = function (Reservas) {
   console.info("1");
 
-  Reservas.criar = (data, request, cb) => {
-    console.info("2");
-    criarReserva(data, request)
-      .then((result) => {
-        console.info("3");
-        if (result) {
-          return app.Reservas(result, request, cb);
-        }
-      })
-      .catch((err) => {
-        cb(error, null);
-      });
-  };  
-
-  Reservas.beforeRemote("/", (ctx, next) => {
-    console.info("================>", ctx);
-    if (!ctx.instance) {
-      console.info("3");
-      next();
-      return;
-    }
-  });
-
   Reservas.remoteMethod("/", {
     accepts: [
       {
@@ -222,5 +199,39 @@ module.exports = function (Reservas) {
     returns: { type: "Reservas", root: true },
     description: ["Criar a reserva"],
   });
+
+  // intercepatador do loopback 3x
+  Reservas.beforeRemote("**", function logBefore(ctx, next) {
+    console.log("About to invoke a method.");
+    next();
+  });
+
+  Reservas.afterRemote("**", function logAfter(ctx, next) {
+    try {
+      console.log("afterRemote.", ctx);
+      next();
+    } catch (err) {
+      console.error("afterRemote", err);
+    }
+  });
+
+  Reservas.afterRemoteError("**", function logAfterError(ctx, next) {
+    console.log("Method failed: ", ctx.error);
+  });
+
+  Reservas.criar = (data, request, cb) => {
+    console.info("2");
+    criarReserva(data, request)
+      .then((result) => {
+        console.info("3");
+        if (result) {
+          return app.Reservas(result, request, cb);
+        }
+      })
+      .catch((err) => {
+        cb(error, null);
+      });
+  };
+
   console.info("4");
 };
