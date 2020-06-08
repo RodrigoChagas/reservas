@@ -6,8 +6,11 @@
     "validateUpsert": true
   },
   "properties": {
+    "id": {
+      "type": "string"
+    },
     "tipo": {
-      "type": "string",  
+      "type": "string",
       "required": true
     },
     "inicioEm": {
@@ -18,18 +21,12 @@
       "type": "DateString",
       "required": true
     },
-    "id": {
-      "type": "string",
-      "required": true
-    },
     "status": {
       "type": "string",
-      "required": true,
       "default": "ativa"
     },
     "criadoEm": {
-      "type": "date",
-      "required": true
+      "type": "date"
     }
   },
   "validations": [],
