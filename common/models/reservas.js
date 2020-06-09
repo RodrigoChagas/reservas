@@ -2,17 +2,7 @@
 
 const app = require("../../server/boot/success");
 
-/** Retorna se a quadra é valida
- * @param {string} tipo
- * @return {boolean}
- */
-const isQuadraValida = (tipo) => {
-  tt == "SAIBRO" || tt == "HARD" ? `Quadra ${tipo}` : "Quadra nao existe";
-
-  return tt;
-};
-
-const validarHorarioAtendimento = () => {
+const isValidoHorarioAtendimento = () => {
   try {
     Reservas.status = (cb) => {
       let dataAtual = new Date();
@@ -41,7 +31,20 @@ const validarHorarioAtendimento = () => {
   }
 };
 
-const criarReserva = (data, request) => {
+const formatandoIdentificador = (data) => {
+  console.info("ENTREI formatandoIdentificador");
+  let date = new Date();
+  let ano = date.getFullYear();
+  let mes = date.getMonth();
+  let dia = date.getDay();
+  let cod = "924R1L10000";
+  let complementoID = ano + mes + dia + cod;
+
+  let id = data.id + complementoID;
+
+  return id;
+};
+const criarReserva = async (data) => {
   try {
     /**
      *
@@ -49,37 +52,42 @@ const criarReserva = (data, request) => {
      *  para o status e dafaultde data atual (new Date()) para o criadoEm, ignorando valores caso inputadospelo usuário
      *
      */
-    console.info("======>>>>", data);
+    let manipulados = [];
+    let nomeQuadra,
+      dataInicio,
+      dataFim,
+      statusQuadra,
+      dataCriacao = null;
 
-    let quadra = data.tipo;
-    let dataInicio = data.inicioEm;
-    let dataFim = data.fimEm;
-    let id = data.id + "924R1L10000";
-    let status = data.status;
-    let dataCriacao = (data.criadoEm = new Date());
+    nomeQuadra = data.tipo;
+    dataInicio = data.inicioEm;
+    dataFim = data.fimEm;
+    statusQuadra = data.status;
+    dataCriacao = data.criadoEm = new Date();
 
-    const validarQuadra = (quadra) => {
-      try {
-        return new Promise((resolve, reject) => {
-          if (!isQuadraValida(quadra)) {
-            reject("ERROR criar reserva");
-          } else if (!dataInicio) {
-            //Todo criar metodo para validar se a data esta disponivel
-            reject("ERROR dataInicio");
-          } else if (!dataFim) {
-            reject("ERROR dataFim");
-          } else if (status != ativa) {
-            reject("ERROR");
-          }
-          console.log("ENTREI");
-          resolve();
-        });
-      } catch (err) {
-        console.error("validarQuadra", err);
-      }
-    };
+    console.time("isValidoHorarioAtendimento");
+    await isValidoHorarioAtendimento();
+    console.timeEnd("isValidoHorarioAtendimento");
+
+    // valida o input da quadra
+    console.time("isQuadraValida");
+    await isQuadraValida(nomeQuadra);
+    console.timeEnd("isQuadraValida");
+
+    // valida o input da data inicio e fim de reserva
+    console.time("validarEntradaDataReserva");
+    await isValidaDataReserva(dataInicio, dataFim);
+    console.timeEnd("validarEntradaDataReserva");
+
+    console.time("isValidaEstadoReserva");
+    await isValidaEstadoReserva(statusQuadra);
+    console.timeEnd("isValidaEstadoReserva");
+
+    manipulados.push(quadra, dataInicio, dataFim, statusQuadra, dataCriacao);
+    return manipulados;
   } catch (err) {
-    console.error("criarReserva", err);
+    console.log("validarQuadra 9");
+    console.error("ERROR criarReserva", err);
   }
 };
 
@@ -89,29 +97,42 @@ const criarReserva = (data, request) => {
  * Nome da quadra de tenis existentes :: SAIBRO ou HARD
  *
  */
-function validarQuadra() {
+const isQuadraValida = (data) => {
   try {
-    const validaInput = Reservas.validatesFormatOf("tipo", {
+    console.info("ENTREI isQuadraValida");
+
+    const validaInput = Reservas.validatesFormatOf(data, {
       with: /^[a-z\s]{0,255}$/i,
     });
 
     if (validaInput == "SAIBRO" || validaInput == "HARD") {
       console.log("SUCESSO");
     } else {
-      console.log("Desculpe, mas hoje só temos quadra SAIBRO ou HARD");
+      console.log("Desculpe, mas só temos quadra SAIBRO ou HARD");
     }
     return validaInput;
   } catch (err) {
     throw new Error("metodo para validar o input do nome da quadra", err);
   }
-}
+};
 
 // TODO criar metodo para validar o input das datas de reservas
-const validarEntradaDataReserva = () => {
+const isValidarDataReserva = (inicioEm, fimEm) => {
   try {
+    console.info("ENTREI isValidarDataReserva");
+
     Reservas.validatesDateOf("inicioEm", "fimEm", {
       message: "Error ",
-    });
+    }),
+      function (result) {
+        if (!result) {
+          console.error("ERROR validacao da DATA de reserva");
+        } else {
+          validarDuracaoReserva(inicioEm, fimEm);
+          return;
+        }
+      };
+    return;
   } catch (err) {
     throw new Error("validarEntradaDataReservas  ", err);
   }
@@ -123,32 +144,37 @@ const validarEntradaDataReserva = () => {
  * A duração deve ser o fimEm menos o inicioEm em minutos e o valor deve ser R$0.50 por minuto.
  *
  */
-const validarDuracaoReserva = () => {
+const validarDuracaoReserva = (inicioEm, fimEm) => {
   try {
-    //TODO converter em minutos
+    console.info("ENTREI validarDuracaoReserva");
+
+    //TODO validar novamente o input
     Reservas.validatesPresenceOf("inicioEm", "fimEm");
-    Reservas.isValid((valid) => {
-      // cconvertendo em timestamp
-      let dataInicio = Date.parse(inicioEm);
-      let dataFim = Date.parse(fimEm);
+    //TODO converter em minutos
+    Reservas.isValid(() => {
+      try {
+        // cconvertendo em timestamp
+        let dataInicio = Date.parse(inicioEm);
+        let dataFim = Date.parse(fimEm);
 
-      // cconvertendo para minuto
-      let inicioMinutes = Math.floor(dataInicio / 60);
-      let fimMinutes = Math.floor(dataFim / 60);
+        // cconvertendo para minuto
+        let inicioMinutes = Math.floor(dataInicio / 60);
+        let fimMinutes = Math.floor(dataFim / 60);
 
-      let aluguelValorMinuto = fimMinutes - inicioMinutes;
+        let aluguelValorMinuto = fimMinutes - inicioMinutes;
 
-      let calc = aluguelValorMinuto * 0.5;
+        let valor = aluguelValorMinuto * 0.5;
 
-      console.log("aaaa", dataInicio, dataFim);
+        console.log("calculo", valor);
+        return valor;
+      } catch (err) {
+        console.error("ERROR isValid", err);
+      }
     });
   } catch (err) {
     throw new Error("Valor da reserva", err);
   }
 };
-
-// TODO criar metodo para adicionar uma forma para os usuários verem o histórico dos cancelamentos adicionando a data de cancelamento na interface.
-const historicorCancelamento = () => {};
 
 // TODO criar metodo para validar a consistência dos dados antes de salvá-los e responder com statusCode adequado quando a requisição for inválida.
 /**
@@ -156,7 +182,19 @@ const historicorCancelamento = () => {};
  * Adicionar a regra para validar o campo status; este deve conter apenas os valores "ativo", "cancelado" e "pago".
  *
  */
-const validarEstadoReserva = () => {};
+const isValidaEstadoReserva = (status) => {
+  try {
+    console.info("ENTREI isValidaEstadoReserva");
+    if (status == "ativo") {
+      return status;
+    }
+  } catch (err) {
+    console.error("ERROR isValidaEstadoReserva", err);
+  }
+};
+
+// TODO criar metodo para adicionar uma forma para os usuários verem o histórico dos cancelamentos adicionando a data de cancelamento na interface.
+const historicorCancelamento = () => {};
 
 // TODO criar metodo para validar se o duracao da reserva está sempre maior que 60 minutos
 /**
@@ -174,7 +212,11 @@ const validarReservaAtiva = () => {};
 const validarDataReserva = () => {};
 
 module.exports = function (Reservas) {
-  console.info("1");
+  Reservas.criar = (data, cb) => {
+    console.info("Reservass CRIAR");
+    cb(null, data);
+    return;
+  };
 
   Reservas.remoteMethod("/", {
     accepts: [
@@ -201,37 +243,47 @@ module.exports = function (Reservas) {
   });
 
   // intercepatador do loopback 3x
-  Reservas.beforeRemote("**", function logBefore(ctx, next) {
-    console.log("About to invoke a method.");
-    next();
+  Reservas.beforeRemote("**", async function logBefore(ctx, unused, next) {
+    try {
+      console.log("beforeRemote...");
+
+      let data = [];
+      data = ctx.req.body;
+
+      console.time("criarReserva");
+      await criarReserva(data);
+      console.timeEnd("criarReserva");
+
+      next();
+      return;
+    } catch (err) {
+      console.error("ERROR beforeRemote", err);
+    }
   });
 
-  Reservas.afterRemote("**", function logAfter(ctx, next) {
+  Reservas.afterRemote("**", async function logAfter(ctx, res, next) {
     try {
-      console.log("afterRemote.", ctx);
+      console.log("afterRemote...");
+
+      let data = [];
+      let id = res.id;
+      await formatandoIdentificador(id);
+
+      res.id = id;
+      console.log("setID", res.id);
       next();
+      return;
     } catch (err) {
-      console.error("afterRemote", err);
+      console.error("ERROR afterRemote", err);
     }
   });
 
   Reservas.afterRemoteError("**", function logAfterError(ctx, next) {
-    console.log("Method failed: ", ctx.error);
+    console.log("afterRemoteError...");
+
+    if (!ctx.result) ctx.result = {};
+
+    console.error(ctx.error);
+    next(new Error("ERROR - Veja o log para mais detalhes!"));
   });
-
-  Reservas.criar = (data, request, cb) => {
-    console.info("2");
-    criarReserva(data, request)
-      .then((result) => {
-        console.info("3");
-        if (result) {
-          return app.Reservas(result, request, cb);
-        }
-      })
-      .catch((err) => {
-        cb(error, null);
-      });
-  };
-
-  console.info("4");
 };
