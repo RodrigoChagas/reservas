@@ -4,45 +4,44 @@ const app = require("../../server/boot/success");
 
 const isValidoHorarioAtendimento = () => {
   try {
-    Reservas.status = (cb) => {
-      let dataAtual = new Date();
-      let horaAtual = dataAtual.getHours();
-      let horaAbertura = 6;
-      let horaFechamento = 20;
+    console.log("ENTREI isValidoHorarioAtendimento");
+    let dataAtual = new Date();
+    let horaAtual = dataAtual.getHours();
+    let horaAbertura = 6;
+    let horaFechamento = 20;
 
-      console.log(`Horario atual é ${horaAtual}`);
+    console.log(`Horario atual é ${horaAtual}`);
 
-      let resposta;
-      if (horaAtual >= horaAbertura && horaAtual < horaFechamento) {
-        resposta = "Estamos abertos!";
-      } else {
-        resposta =
-          "Desculpe, não funcionamos nesse horario. Abrimos diariamente entre 6h até 20h.";
-      }
-      cb(null, resposta);
-    };
-
-    Reservas.remoteMethod("status", {
-      http: { path: "/status", verb: "get" },
-      returns: { type: "object", root: true },
-    });
+    let resposta = null;
+    if (horaAtual >= horaAbertura && horaAtual < horaFechamento) {
+      resposta = "Estamos abertos!";
+      console.info(resposta);
+    } else {
+      resposta =
+        "Desculpe, não funcionamos nesse horario. Abrimos diariamente entre 6h até 20h.";
+      console.info(resposta);
+    }
+    return;
   } catch (err) {
     console.error("validarHorarioAtendimento ", err);
   }
 };
 
-const formatandoIdentificador = (data) => {
-  console.info("ENTREI formatandoIdentificador");
-  let date = new Date();
-  let ano = date.getFullYear();
-  let mes = date.getMonth();
-  let dia = date.getDay();
-  let cod = "924R1L10000";
-  let complementoID = ano + mes + dia + cod;
+const formatandoIdentificador = (id) => {
+  try {
+    console.info("ENTREI formatandoIdentificador");
+    let date = new Date();
+    let ano = date.getFullYear();
+    let mes = date.getMonth();
+    let dia = date.getDay();
+    let cod = "924R1L10000";
+    let complementoID = ano + mes + dia + cod;
 
-  let id = data.id + complementoID;
-
-  return id;
+    let idFormatado = id + complementoID;
+    return idFormatado;
+  } catch (err) {
+    console.error("formatandoIdentificador", err);
+  }
 };
 const criarReserva = async (data) => {
   try {
@@ -83,10 +82,15 @@ const criarReserva = async (data) => {
     await isValidaEstadoReserva(statusQuadra);
     console.timeEnd("isValidaEstadoReserva");
 
-    manipulados.push(quadra, dataInicio, dataFim, statusQuadra, dataCriacao);
+    manipulados.push(
+      nomeQuadra,
+      dataInicio,
+      dataFim,
+      statusQuadra,
+      dataCriacao
+    );
     return manipulados;
   } catch (err) {
-    console.log("validarQuadra 9");
     console.error("ERROR criarReserva", err);
   }
 };
@@ -101,40 +105,43 @@ const isQuadraValida = (data) => {
   try {
     console.info("ENTREI isQuadraValida");
 
-    const validaInput = Reservas.validatesFormatOf(data, {
-      with: /^[a-z\s]{0,255}$/i,
-    });
-
-    if (validaInput == "SAIBRO" || validaInput == "HARD") {
+    if (data == "SAIBRO" || data == "HARD") {
       console.log("SUCESSO");
     } else {
       console.log("Desculpe, mas só temos quadra SAIBRO ou HARD");
     }
-    return validaInput;
+    return data;
   } catch (err) {
     throw new Error("metodo para validar o input do nome da quadra", err);
   }
 };
 
 // TODO criar metodo para validar o input das datas de reservas
-const isValidarDataReserva = (inicioEm, fimEm) => {
+const isValidaDataReserva = (inicioEm, fimEm) => {
   try {
-    console.info("ENTREI isValidarDataReserva");
+    console.info("ENTREI isValidaDataReserva");
 
-    Reservas.validatesDateOf("inicioEm", "fimEm", {
-      message: "Error ",
-    }),
-      function (result) {
-        if (!result) {
-          console.error("ERROR validacao da DATA de reserva");
-        } else {
-          validarDuracaoReserva(inicioEm, fimEm);
-          return;
-        }
-      };
-    return;
+    var dataInicio = null;
+    var dataFim = null;
+    if (inicioEm && fimEm) {
+      let dia = inicioEm.substring(8, 10);
+      let mes = inicioEm.substring(5, 7);
+      let ano = inicioEm.substring(0, 4);
+      let hora = inicioEm.substring(11, 13);
+
+      let horaGMT = parseInt(hora) - 3;
+      horaGMT.toString();
+
+      console.log(dia + mes + ano + hora);
+      dataInicio = `${dia}/${mes}/${ano}:${horaGMT}:00:00`;
+      dataFim = `${dia}/${mes}/${ano}:${hora}:00:00`;
+
+      console.log("dataInicio", dataInicio);
+      console.log("dataFim", dataFim);
+    }
+    return dataInicio, dataFim;
   } catch (err) {
-    throw new Error("validarEntradaDataReservas  ", err);
+    console.error("isValidaDataReserva  ", err);
   }
 };
 
@@ -149,28 +156,35 @@ const validarDuracaoReserva = (inicioEm, fimEm) => {
     console.info("ENTREI validarDuracaoReserva");
 
     //TODO validar novamente o input
-    Reservas.validatesPresenceOf("inicioEm", "fimEm");
+    if (inicioEm && fimEm) {
+      let dataInicio = null;
+      let dataFim = null;
+      let hora = inicioEm.getHours();
+      let dia = inicioEm.getDate();
+      let mes = inicioEm.getMonth();
+      let ano = inicioEm.getFullYear();
+
+      dataInicio = `${dia}/${mes}/${ano}:${hora}:00:00`;
+      dataFim = `${dia}/${mes}/${ano}:${hora}:00:00`;
+    } else {
+      console.error("Datas invalidas!!");
+    }
+
     //TODO converter em minutos
-    Reservas.isValid(() => {
-      try {
-        // cconvertendo em timestamp
-        let dataInicio = Date.parse(inicioEm);
-        let dataFim = Date.parse(fimEm);
+    // convertendo formato de data em timestamp
+    let dataInicio = Date.parse(inicioEm);
+    let dataFim = Date.parse(fimEm);
 
-        // cconvertendo para minuto
-        let inicioMinutes = Math.floor(dataInicio / 60);
-        let fimMinutes = Math.floor(dataFim / 60);
+    // convertendo para minuto
+    let inicioMinutes = Math.floor(dataInicio / 60);
+    let fimMinutes = Math.floor(dataFim / 60);
 
-        let aluguelValorMinuto = fimMinutes - inicioMinutes;
+    let aluguelValorMinuto = fimMinutes - inicioMinutes;
 
-        let valor = aluguelValorMinuto * 0.5;
+    let valor = aluguelValorMinuto * 0.5;
 
-        console.log("calculo", valor);
-        return valor;
-      } catch (err) {
-        console.error("ERROR isValid", err);
-      }
-    });
+    console.log("calculo", valor);
+    return valor;
   } catch (err) {
     throw new Error("Valor da reserva", err);
   }
@@ -212,10 +226,14 @@ const validarReservaAtiva = () => {};
 const validarDataReserva = () => {};
 
 module.exports = function (Reservas) {
-  Reservas.criar = (data, cb) => {
-    console.info("Reservass CRIAR");
-    cb(null, data);
-    return;
+  Reservas.criar = (data, request, cb) => {
+    criarReserva(data, request)
+      .then((result) => {
+        return result;
+      })
+      .cactch((err) => {
+        cb(err, null);
+      });
   };
 
   Reservas.remoteMethod("/", {
@@ -265,12 +283,13 @@ module.exports = function (Reservas) {
     try {
       console.log("afterRemote...");
 
-      let data = [];
-      let id = res.id;
-      await formatandoIdentificador(id);
+      let data = res;
+      let id = data.id;
 
-      res.id = id;
-      console.log("setID", res.id);
+      console.time("formatandoIdentificador");
+      await formatandoIdentificador(id);
+      console.timeEnd("formatandoIdentificador");
+
       next();
       return;
     } catch (err) {
