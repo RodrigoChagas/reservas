@@ -272,7 +272,7 @@ module.exports = function (Reservas) {
       await criarReserva(data);
       console.timeEnd("criarReserva");
 
-      next();
+      // next(); // esta dando error UnhandledPromiseRejectionWarning:
       return;
     } catch (err) {
       console.error("ERROR beforeRemote", err);
@@ -290,7 +290,7 @@ module.exports = function (Reservas) {
       await formatandoIdentificador(id);
       console.timeEnd("formatandoIdentificador");
 
-      next();
+      // next(); // esta dando error UnhandledPromiseRejectionWarning:
       return;
     } catch (err) {
       console.error("ERROR afterRemote", err);
